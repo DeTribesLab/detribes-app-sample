@@ -1,2 +1,4 @@
 # detribes-app-sample
-A sample App for detribes
+
+A sample App for detribes.
+
