@@ -1,0 +1,29 @@
+{
+    "0x5132fb5daa159ad934333a772061be4bd12129f2": {
+        "group": "7d71a812ec566eba3dc75a31f95f2c27",
+        "members": {},
+        "usernames": {}
+    },
+    "0xedc6929d7229e8a03e908945d778bc69c5e1c70d": {
+        "group": "4de308a49705679cf0b9c5421bfb272a",
+        "members": {
+            "0x269310e9877284821554a7331fe29d6937fb26dc": {
+                "member": "0x269310e9877284821554a7331fe29d6937fb26dc",
+                "username": "x",
+                "role": 0
+            }
+        },
+        "usernames": {
+            "x": {
+                "member": "0x269310e9877284821554a7331fe29d6937fb26dc",
+                "username": "x",
+                "role": 0
+            }
+        }
+    },
+    "0xe23bcc6397a96fbc8121c7c992895ee10106e546": {
+        "group": "a3fcafe23ac49de4485dd2e76ebc60cb",
+        "members": {},
+        "usernames": {}
+    }
+}
