@@ -13,10 +13,10 @@ JSON-RPC definitions:
     "method": "CREATE_GROUP",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "tribeAddress": "0x...",
+        "tribeAddress": "0x1234...",
         "name": "NFT Discuss",
         "description": "Discuss how NFT works...",
-        "address": "0x...",
+        "address": "0xa1b2...",
         "username": "hello",
         "role": 0,
         "owner": true
@@ -33,7 +33,7 @@ JSON-RPC definitions:
     "method": "REMOVE_GROUP",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "tribeAddress": "0xf1d2..."
+        "tribeAddress": "0x1234...",
     }
 }
 ```
@@ -47,7 +47,8 @@ JSON-RPC definitions:
     "method": "ADD_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0x...member...address...",
+        "tribeAddress": "0x1234...",
+        "address": "0xa1b2...",
         "username": "bob",
         "role": 0,
         "expires: 6000000000
@@ -64,7 +65,8 @@ JSON-RPC definitions:
     "method": "UPDATE_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0x...member...address...",
+        "tribeAddress": "0x1234...",
+        "address": "0xa1b2...",
         "username": "bob",
         "role": 0,
         "expires: 1640995200
@@ -81,7 +83,8 @@ JSON-RPC definitions:
     "method": "REMOVE_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0x...member...address...",
+        "tribeAddress": "0x1234...",
+        "address": "0xa1b2...",
         "username": "bob"
     }
 }
@@ -96,7 +99,8 @@ JSON-RPC definitions:
     "method": "NOTIFY_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0x...member...address...",
+        "tribeAddress": "0x1234...",
+        "address": "0xa1b2...",
         "username": "bob",
         "message": "Hi bob, please note ..."
     }
@@ -112,6 +116,7 @@ JSON-RPC definitions:
     "method": "NOTIFY_GROUP",
     "params": {
         "tribeGroupId": "1234...abcd",
+        "tribeAddress": "0x1234...",
         "message": "Hi all, please note ..."
     }
 }
