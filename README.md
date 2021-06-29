@@ -29,7 +29,8 @@ JSON-RPC definitions:
     "jsonrpc": "2.0",
     "method": "REMOVE_GROUP",
     "params": {
-        "tribeGroupId": "1234...abcd"
+        "tribeGroupId": "1234...abcd",
+        "address": "0xf1d2..."
     }
 }
 ```
@@ -44,8 +45,9 @@ JSON-RPC definitions:
     "params": {
         "tribeGroupId": "1234...abcd",
         "address": "0x...member...address...",
-        "username": "hello",
-        "role": 0
+        "username": "bob",
+        "role": 0,
+        "expires: 6000000000
     }
 }
 ```
@@ -60,8 +62,9 @@ JSON-RPC definitions:
     "params": {
         "tribeGroupId": "1234...abcd",
         "address": "0x...member...address...",
-        "username": "hello",
-        "role": 0
+        "username": "bob",
+        "role": 0,
+        "expires: 1640995200
     }
 }
 ```
@@ -76,7 +79,7 @@ JSON-RPC definitions:
     "params": {
         "tribeGroupId": "1234...abcd",
         "address": "0x...member...address...",
-        "username": "hello"
+        "username": "bob"
     }
 }
 ```
@@ -91,8 +94,22 @@ JSON-RPC definitions:
     "params": {
         "tribeGroupId": "1234...abcd",
         "address": "0x...member...address...",
-        "username": "hello",
-        "message": "please note ..."
+        "username": "bob",
+        "message": "Hi bob, please note ..."
+    }
+}
+```
+
+# Notify Group:
+
+```
+{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "NOTIFY_GROUP",
+    "params": {
+        "tribeGroupId": "1234...abcd",
+        "message": "Hi all, please note ..."
     }
 }
 ```
@@ -104,6 +121,7 @@ Sample database schema for app:
 ```
 CREATE TABLE channels (
     tribeGroupIdId VARCHAR(100) NOT NULL, -- tribeGroupId id from server
+    address VARCHAR(42) NOT NULL,         -- tribe address from server
     channelId VARCHAR(100) NOT NULL,      -- the real telegram channel id
     name VARCHAR(100) NOT NULL,           -- channel name
     description VARCHAR(100) NOT NULL,    -- extra metadata for channel
@@ -117,6 +135,7 @@ CREATE TABLE members (
     address VARCHAR(42) NOT NULL,         -- the address of user
     username VARCHAR(100) NOT NULL,       -- the real telegram username in the channel
     role INT NOT NULL,                    -- the role of user
+    expires BIGINT NOT NULL,              -- expires time in seconds
     description VARCHAR(100) NOT NULL,    -- extra metadata for user
     CONSTRAINT UNI_ADDR_USER UNIQUE (address, username),
     PRIMARY KEY(id)
