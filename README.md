@@ -132,20 +132,20 @@ CREATE TABLE channels (
     tribeAddress VARCHAR(42) NOT NULL,    -- tribe address from server
     channelId VARCHAR(100) NOT NULL,      -- the real telegram channel id
     name VARCHAR(100) NOT NULL,           -- channel name
-    description VARCHAR(100) NOT NULL,    -- extra metadata for channel
+    description VARCHAR(100) NOT NULL,    -- channel description
     CONSTRAINT UNI_CHANNEL_ID UNIQUE (channelId),
     PRIMARY KEY(tribeGroupIdId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE members (
     id BIGINT AUTO_INCREMENT NOT NULL,
-    tribeGroupIdId VARCHAR(100) NOT NULL, -- reference to channels.tribeGroupIdId
-    address VARCHAR(42) NOT NULL,         -- the address of user
-    username VARCHAR(100) NOT NULL,       -- the real telegram username in the channel
-    role INT NOT NULL,                    -- the role of user
-    expires BIGINT NOT NULL,              -- expires time in seconds
-    description VARCHAR(100) NOT NULL,    -- extra metadata for user
-    CONSTRAINT UNI_ADDR_USER UNIQUE (address, username),
+    tribeGroupId VARCHAR(100) NOT NULL, -- reference to channels.tribeGroupIdId
+    address VARCHAR(42) NOT NULL,       -- the address of user
+    username VARCHAR(100) NOT NULL,     -- the real telegram username in the channel
+    role INT NOT NULL,                  -- the role of user
+    expires BIGINT NOT NULL,            -- expires time in seconds
+    metadata VARCHAR(100) NOT NULL,     -- extra metadata for user
+    CONSTRAINT UNI_ADDR_USER UNIQUE (tribeGroupId, address, username),
     PRIMARY KEY(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
