@@ -12,7 +12,11 @@ JSON-RPC definitions:
     "jsonrpc": "2.0",
     "method": "CREATE_GROUP",
     "params": {
-        "tribeGroupId": "1234...abcd"
+        "tribeGroupId": "1234...abcd",
+        "address": "0x...member...address...",
+        "username": "hello",
+        "role": 0,
+        "owner": true
     }
 }
 ```
@@ -39,7 +43,7 @@ JSON-RPC definitions:
     "method": "ADD_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "member": "0x...member...address...",
+        "address": "0x...member...address...",
         "username": "hello",
         "role": 0
     }
@@ -55,7 +59,7 @@ JSON-RPC definitions:
     "method": "UPDATE_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "member": "0x...member...address...",
+        "address": "0x...member...address...",
         "username": "hello",
         "role": 0
     }
@@ -71,7 +75,8 @@ JSON-RPC definitions:
     "method": "REMOVE_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "member": "0x...member...address..."
+        "address": "0x...member...address...",
+        "username": "hello"
     }
 }
 ```
@@ -85,7 +90,7 @@ JSON-RPC definitions:
     "method": "NOTIFY_MEMBER",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "member": "0x...member...address...",
+        "address": "0x...member...address...",
         "username": "hello",
         "message": "please note ..."
     }
@@ -109,10 +114,11 @@ CREATE TABLE channels (
 CREATE TABLE members (
     id BIGINT AUTO_INCREMENT NOT NULL,
     tribeGroupIdId VARCHAR(100) NOT NULL, -- reference to channels.tribeGroupIdId
-    userId VARCHAR(100) NOT NULL,         -- the real telegram username in the channel
+    address VARCHAR(42) NOT NULL,         -- the address of user
+    username VARCHAR(100) NOT NULL,       -- the real telegram username in the channel
     role INT NOT NULL,                    -- the role of user
     description VARCHAR(100) NOT NULL,    -- extra metadata for user
-    CONSTRAINT UNI_tribeGroupId_USER UNIQUE (tribeGroupIdId, userId),
+    CONSTRAINT UNI_ADDR_USER UNIQUE (address, username),
     PRIMARY KEY(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
