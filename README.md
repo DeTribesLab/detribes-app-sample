@@ -13,7 +13,8 @@ JSON-RPC definitions:
     "method": "CREATE_GROUP",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0x...member...address...",
+        "tribeAddress": "0x...",
+        "address": "0x...",
         "username": "hello",
         "role": 0,
         "owner": true
@@ -30,7 +31,7 @@ JSON-RPC definitions:
     "method": "REMOVE_GROUP",
     "params": {
         "tribeGroupId": "1234...abcd",
-        "address": "0xf1d2..."
+        "tribeAddress": "0xf1d2..."
     }
 }
 ```
@@ -121,7 +122,7 @@ Sample database schema for app:
 ```
 CREATE TABLE channels (
     tribeGroupIdId VARCHAR(100) NOT NULL, -- tribeGroupId id from server
-    address VARCHAR(42) NOT NULL,         -- tribe address from server
+    tribeAddress VARCHAR(42) NOT NULL,    -- tribe address from server
     channelId VARCHAR(100) NOT NULL,      -- the real telegram channel id
     name VARCHAR(100) NOT NULL,           -- channel name
     description VARCHAR(100) NOT NULL,    -- extra metadata for channel
