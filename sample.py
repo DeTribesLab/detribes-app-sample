@@ -36,14 +36,25 @@ db = loadDB()
 
 def processCreateGroup(id, params):
     tribeGroupId = params['tribeGroupId']
+    tribeAddress = params['tribeAddress']
     if not tribeGroupId in db:
         db[tribeGroupId] = {
-            'group': hash(tribeGroupId),
-            'members': {},
-            'usernames': {}
+            'tribeAddress': tribeAddress,
+            'members': {}
         }
+        address = params['address']
+        username = params['username']
+        role = params['role']
+        owner = params['owner']
+        user = {
+            'address': address,
+            'username': username,
+            'role': role,
+            'owner': owner
+        }
+        db[tribeGroupId]['members'][address] = user
         saveDB()
-    return json_success(id, {'group': db[tribeGroupId]['group']})
+    return json_success(id, {})
 
 
 def processRemoveGroup(id, params):
@@ -55,20 +66,19 @@ def processRemoveGroup(id, params):
 
 
 def processAddMember(id, params):
-    tribeGroupId = params['tribeGroupId']  # 0xtribeGroupIdAddress
-    member = params['member']  # 0xMemberAddress
+    tribeGroupId = params['tribeGroupId']  # tribeGroupId
+    address = params['address']  # 0x
     username = params['username']  # @username
     role = params['role']  # 0xff
     if tribeGroupId in db:
-        ins = {
-            'member': member,
+        user = {
+            'address': address,
             'username': username,
             'role': role
         }
-        db[tribeGroupId]['members'][member] = ins
-        db[tribeGroupId]['usernames'][username] = ins
+        db[tribeGroupId]['members'][address] = user
         saveDB()
-        return json_success(id, ins)
+        return json_success(id, {})
     return json_error(id, 100, 'tribeGroupId not found')
 
 
@@ -77,24 +87,23 @@ processUpdateMember = processAddMember
 
 def processRemoveMember(id, params):
     tribeGroupId = params['tribeGroupId']  # 0xtribeGroupIdAddress
-    member = params['member']  # 0xMemberAddress
+    address = params['address']  # 0x
     username = params['username']  # @username
     if tribeGroupId in db:
-        del db[tribeGroupId]['members'][member]
-        del db[tribeGroupId]['usernames'][username]
+        del db[tribeGroupId]['members'][address]
         saveDB()
     return json_success(id, {})
 
 
 def processNotifyMember(id, params):
     tribeGroupId = params['tribeGroupId']  # 0xtribeGroupIdAddress
-    member = params['member']  # 0xMemberAddress
+    address = params['address']  # 0x
     username = params['username']  # @username
     message = params['message']  # message
     if tribeGroupId in db:
-        if member in db[tribeGroupId]['members']:
-            user = db[tribeGroupId]['members'][member]
-            print('notify user %s: %s' % member, message)
+        if address in db[tribeGroupId]['members']:
+            user = db[tribeGroupId]['members'][address]
+            print('notify user %s: %s' % user.username, message)
             return json_success(id, {})
         return json_error(id, 200, 'member not found')
     return json_error(id, 100, 'tribeGroupId not found')

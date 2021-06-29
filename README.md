@@ -51,7 +51,8 @@ JSON-RPC definitions:
         "address": "0xa1b2...",
         "username": "bob",
         "role": 0,
-        "expires: 6000000000
+        "expires: 6000000000,
+        "owner": false
     }
 }
 ```
@@ -69,7 +70,8 @@ JSON-RPC definitions:
         "address": "0xa1b2...",
         "username": "bob",
         "role": 0,
-        "expires: 1640995200
+        "expires: 1640995200,
+        "owner": false
     }
 }
 ```
