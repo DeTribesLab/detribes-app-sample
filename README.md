@@ -14,6 +14,8 @@ JSON-RPC definitions:
     "params": {
         "tribeGroupId": "1234...abcd",
         "tribeAddress": "0x...",
+        "name": "NFT Discuss",
+        "description": "Discuss how NFT works...",
         "address": "0x...",
         "username": "hello",
         "role": 0,
