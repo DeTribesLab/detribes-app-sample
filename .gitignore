@@ -130,3 +130,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+/config.json
+/Telegram Server.session
+/Telegram Server.session-journal
+/.idea
