@@ -1,34 +1,20 @@
 import json
 import hmac
-import hashlib
 import logging
-import os
+import hashlib
+import asyncio
 
-from flask import Flask, g
-from flask import request
+from flask import Flask, request
 
-# set sync mode
-from telethon.sync import TelegramClient
+from telethon import TelegramClient
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, DeleteChannelRequest
 
-import pymysql
-
-logger = logging.getLogger()
-
-# load config
-with open("config.json") as config_file:
-    config = json.load(config_file)
-print(config)
-# create sqlalchemy
-from sqlalchemy import create_engine, Column, String, Integer, UniqueConstraint, Boolean
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import Column, String, Integer, UniqueConstraint, Boolean, create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy.ext.declarative import declarative_base
-engine = create_engine(config['mysql']['url'], convert_unicode=True)
-db_session = scoped_session(sessionmaker(autoflush=False, autocommit=False, bind=engine))
-print('db_session created')
-Base = declarative_base()
-Base.query = db_session.query_property()
 
+# declare models
+Base = declarative_base()
 
 class Channel(Base):
     __tablename__ = 'channels'
@@ -52,23 +38,72 @@ class Member(Base):
     UniqueConstraint('tribeGroupId', 'address', 'username', name='UNI_ADDR_USER')
 
 
+# load config
+with open("config.json") as config_file:
+    config = json.load(config_file)
+print(config)
+
+# initialize logger
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logger = logging.getLogger(__name__)
+
+# initialize loop
+loop = asyncio.get_event_loop()
+
+# initialize db
+engine = create_engine(config['mysql']['url'], echo=True, future=True)
+Session = scoped_session(sessionmaker(bind=engine))
+
 # initialize Telethon
 telegram_app_id = config['telegram']['appId']
 telegram_app_hash = config['telegram']['appHash']
 telegram_bind_phone = config['telegram']['phone']
-print('before connect telegram client')
 telegram_client = TelegramClient('Telegram Server', telegram_app_id, telegram_app_hash)
-client = telegram_client.connect()
+telegram_client.start(phone=telegram_bind_phone)
 
-print('telegram connected')
-
+# initialize api
 config_api_key = config['api']['key']
 config_api_secret = config['api']['secret']
 
+# initialize flask app
+app = Flask(__name__)
 
-def get_channel(tribe_group_id: str, allow_not_found: bool) -> Channel:
+
+def t_create_group(name, desc):
+    create_channel_req = loop.run_until_complete(telegram_client(CreateChannelRequest(name, desc, megagroup=True)))
+    return create_channel_req.__dict__["chats"][0].__dict__["id"]
+
+
+def t_remove_group(channel_id):
+    loop.run_until_complete(telegram_client(DeleteChannelRequest(channel_id)))
+
+
+def t_get_entity(username):
+    return loop.run_until_complete(telegram_client.get_entity(username))
+
+def t_add_member(channel_id, user):
+    return loop.run_until_complete(telegram_client(InviteToChannelRequest(channel_id, [user])))
+
+
+def t_remove_member(channel_id, user):
+    return loop.run_until_complete(telegram_client.edit_permissions(channel_id, user, view_messages=False))
+
+
+def t_grant_admin(channel_id, user, is_owner=False):
+    add_admins = True if is_owner else False
+    return loop.run_until_complete(telegram_client.edit_admin(channel_id, user, is_admin=True, invite_users=False, add_admins=add_admins))
+
+
+def t_revoke_admin(channel_id, user):
+    return loop.run_until_complete(telegram_client.edit_admin(channel_id, user, is_admin=False))
+
+
+def t_send_message(user, msg):
+    return loop.run_until_complete(telegram_client.send_message(user, msg))
+
+def get_channel(session: Session, tribe_group_id: str, allow_not_found: bool) -> Channel:
     try:
-        channel = Channel.query.filter(Channel.tribeGroupId == tribe_group_id).one()
+        channel = session.query(Channel).filter(Channel.tribeGroupId == tribe_group_id).one()
     except Exception as e:
         if allow_not_found:
             return None
@@ -76,9 +111,9 @@ def get_channel(tribe_group_id: str, allow_not_found: bool) -> Channel:
     return channel
 
 
-def get_member(tribe_group_id:str, username: str, address: str, allow_not_found: bool) -> Member:
+def get_member(session: Session, tribe_group_id:str, username: str, address: str, allow_not_found: bool) -> Member:
     try:
-        member = Member.query.filter(
+        member = session.query(Member).filter(
             Member.tribeGroupIdId == tribe_group_id,
             Member.username == username,
             Member.address == address).one()
@@ -89,7 +124,7 @@ def get_member(tribe_group_id:str, username: str, address: str, allow_not_found:
     return member
 
 
-def process_create_group(rpc_id: int, params: dict) -> None:
+def process_create_group(session: Session, rpc_id: int, params: dict) -> None:
     tribe_group_id = params.get('tribeGroupId', None)
     tribe_address = params.get('tribeAddress', None)
     name = params.get('name', '')
@@ -101,8 +136,7 @@ def process_create_group(rpc_id: int, params: dict) -> None:
         raise Exception('Channel[{}] exists'.format(tribe_group_id))
 
     # create channel
-    create_channel_req = telegram_client(CreateChannelRequest(params['name'], params['description'], megagroup=True))
-    channel_id = create_channel_req.__dict__["chats"][0].__dict__["id"]
+    channel_id = t_create_group(name, description)
 
     # add channel to DB
     channel = Channel(
@@ -112,15 +146,18 @@ def process_create_group(rpc_id: int, params: dict) -> None:
         name=name,
         description=description
     )
-    db_session.add(channel)
+    session.add(channel)
 
     # add member to channel
-    username = params.get('username', '')
-    user = telegram_client.get_entity(username)
-    telegram_client(InviteToChannelRequest(channel_id, [user]))
+    username = params.get('username', None)
+    if not username:
+        raise Exception('username not found')
+    user = t_get_entity(params.get('username', None))
+
+    t_add_member(channel_id, user)
 
     # set member to owner
-    telegram_client.edit_admin(channel_id, user, is_admin=True, invite_users=False, add_admins=True)
+    t_grant_admin(channel_id, user, is_owner=True)
 
     address = params.get('address', '')
     role = params.get('role', 0)
@@ -135,19 +172,22 @@ def process_create_group(rpc_id: int, params: dict) -> None:
         expires=expires,
         owner=True
     )
-    db_session.add(member)
+    session.add(member)
     return json_success(rpc_id, {})
 
 
-def process_remove_group(rpc_id: int, params: dict) -> None:
+def process_remove_group(session: Session, rpc_id: int, params: dict) -> None:
     tribe_group_id = params['tribeGroupId']
-    channel = get_channel(tribe_group_id)
-    # update telegram
-    telegram_client(DeleteChannelRequest(channel.channelId))
+    channel = get_channel(session, tribe_group_id)
+    # remove channel from telegram
+    t_remove_group(channel_id=channel.channelId)
+    # update db
+    session.delete(channel)
+
     return json_success(rpc_id, {})
 
 
-def process_add_member(rpc_id: int, params: dict) -> None:
+def process_add_member(session: Session, rpc_id: int, params: dict) -> None:
     tribe_group_id = params['tribeGroupId']  # 0xtribeGroupIdAddress
     username = params['username'] # @username
     address = params['address']
@@ -159,7 +199,7 @@ def process_add_member(rpc_id: int, params: dict) -> None:
 
     # handle owner
     if owner:
-        owner_member = Member.query.filter(Member.tribeGroupIdId == tribe_group_id, Member.owner).first()
+        owner_member = session(Member).filter(Member.tribeGroupIdId == tribe_group_id, Member.owner).first()
 
         # joined and set to owner
         if owner_member:
@@ -173,88 +213,88 @@ def process_add_member(rpc_id: int, params: dict) -> None:
 
     # save member to DB
     member = Member(tribeGroupIdId=tribe_group_id, address=address, username=username, role=role, expires=expires, owner=owner)
-    db_session.add(member)
+    session.add(member)
 
     # add member to Channel
-    user = telegram_client.get_entity(username)
-    telegram_client(InviteToChannelRequest(channel.channelId, [user]))
-
+    t_add_member(channel_id=channel.channelId, user=t_get_entity(username))
     if owner:
-        telegram_client.edit_admin(channel.channelId, user, is_admin=True, invite_users=False, add_admins=True)
+        t_grant_admin(channel_id=channel.channelId, is_owner=True)
     elif role > 0:
-        telegram_client.edit_admin(channel.channelId, user, is_admin=True, invite_users=False, add_admins=False)
+        t_grant_admin(channel_id=channel.channelId, is_owner=False)
 
     return json_success(rpc_id, {})
 
 
-def process_update_member(rpc_id, params):
+def process_update_member(session:Session, rpc_id, params):
     tribe_group_id = params['tribeGroupId']
     username = params['username']
     address = params['address']
     role = params.get('role', 0) # 0xff
     expires = params.get('expires', 0)
 
-    member = Member.query.filter(
+    member = session(Member).filter(
         Member.tribeGroupIdId == tribe_group_id,
         Member.username == username,
         Member.address == address).one()
-    channel = Channel.query.filter(Channel.tribeGroupIdId == tribe_group_id).one()
+    channel = session(Channel).filter(Channel.tribeGroupIdId == tribe_group_id).one()
 
     member.role = role
     member.expires = expires
 
-    user = telegram_client.get_entity(username)
+    user = t_get_entity(username)
 
     if member.role > 0 and role == 0:
         # revoke admin
-        telegram_client.edit_admin(channel.channelId, user, is_admin=False)
+        t_revoke_admin(channel_id=channel.channelId, user=user)
     if member.role == 0 and role > 0:
         # grant admin
-        telegram_client.edit_admin(channel.channelId, user, is_admin=True, invite_users=False, add_admins=False)
+        t_grant_admin(channel_id=channel.channelId, user=user, is_owner=False)
 
-    db_session.add(member)
+    session.add(member)
     return json_success(rpc_id, {})
 
 
-def process_remove_member(rpc_id, params):
+def process_remove_member(session:Session, rpc_id, params):
     tribe_group_id = params['tribeGroupId']  # 0xtribeGroupIdAddress
     username = params['username']  # @username
     address = params['address']
     # delete us
-    Member.query.filter_by(
+    session(Member).filter(
         Member.tribeGroupIdId == tribe_group_id,
         Member.address == address,
         Member.username == username
     ).delete()
 
     # remove from channel if username not exists
-    if Member.query.filter(Member.tribeGroupIdId == tribe_group_id, Member.username == username).count() == 0:
-        channel = get_channel(tribe_group_id)
-        user = telegram_client.get_entity(username)
-        telegram_client.edit_permissions(channel.channelId, user, view_messages=False)
+    if Session(Member).filter(Member.tribeGroupIdId == tribe_group_id, Member.username == username).count() == 0:
+        channel = get_channel(session, tribe_group_id)
+        user = t_get_entity(username)
+        t_remove_member(channel_id=channel.channelId, user=user)
     return json_success(rpc_id, {})
 
 
-def process_notify_member(rpc_id, params):
+def process_notify_member(session: Session, rpc_id, params):
     tribe_group_id = params['tribeGroupId']  # 0xtribeGroupIdAddress
-    channel = get_channel(tribe_group_id)
+    channel = get_channel(session, tribe_group_id)
     address = params['address']  # 0xMemberAddress
     username = params['username']  # @username
     message = params['message']  # message
-    user = telegram_client.get_entity(username)
-    telegram_client.send_message(user, message)
+    if not username:
+        raise Exception('username not found')
+    user = t_get_entity(username)
+    t_send_message(user, message)
     return json_success(rpc_id, {})
 
-app = Flask(__name__)
+
+@app.before_first_request
+def startup():
+    telegram_client.start(phone=telegram_bind_phone)
 
 
-@app.teardown_request
-def shutdown_session(exception=None):
-    if exception:
-        db_session.rollback()
-    else:
-        db_session.commit()
-    db_session.remove()
+@app.be
+def cleanup():
+    loop.run_until_complete(telegram_client.disconnect())
+
 
 
 @app.route('/rpc', methods=['POST'])
@@ -292,9 +332,13 @@ def json_rpc():
     if method not in handlers:
         return json_error(req.get('id', rpc_id), -32601, 'Unsupported method.')
     try:
-        handlers[method](rpc_id, req['params'])
+        session = Session()
+        handlers[method](session, rpc_id, req['params'])
+        session.commit()
     except Exception as e:
         return json_error(rpc_id, -10000, str(e))
+    finally:
+        Session.remove()
 
 
 def json_error(id, code, message):
