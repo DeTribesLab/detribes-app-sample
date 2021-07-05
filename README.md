@@ -17,6 +17,7 @@ JSON-RPC definitions:
         "name": "NFT Discuss",
         "description": "Discuss how NFT works...",
         "address": "0xa1b2...",
+        "expires": 1703213132,
         "username": "hello",
         "role": 0,
         "owner": true
@@ -132,11 +133,11 @@ Sample database schema for app:
 CREATE TABLE channels (
     tribeGroupId VARCHAR(100) NOT NULL, -- tribeGroupId id from server
     tribeAddress VARCHAR(42) NOT NULL,    -- tribe address from server
-    channelId VARCHAR(100) NOT NULL,      -- the real telegram channel id
+    channelId BIGINT(20) NOT NULL,      -- the real telegram channel id
     name VARCHAR(100) NOT NULL,           -- channel name
     description VARCHAR(100) NOT NULL,    -- channel description
     CONSTRAINT UNI_CHANNEL_ID UNIQUE (channelId),
-    PRIMARY KEY(tribeGroupIdId)
+    PRIMARY KEY(tribeGroupId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE members (
@@ -144,10 +145,12 @@ CREATE TABLE members (
     tribeGroupId VARCHAR(100) NOT NULL, -- reference to channels.tribeGroupIdId
     address VARCHAR(42) NOT NULL,       -- the address of user
     username VARCHAR(100) NOT NULL,     -- the real telegram username in the channel
+    userId BIGINT(20) NOT NULL,         -- telegram user id, it is not changed by username
+    owner tinyint(1) not null default 0, -- indicate if member is owner of group
     role INT NOT NULL,                  -- the role of user
     expires BIGINT NOT NULL,            -- expires time in seconds
     metadata VARCHAR(100) NOT NULL,     -- extra metadata for user
-    CONSTRAINT UNI_ADDR_USER UNIQUE (tribeGroupId, address, username),
+    CONSTRAINT UNI_GROUP_USER UNIQUE (tribeGroupId, username, address),
     PRIMARY KEY(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```

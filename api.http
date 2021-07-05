@@ -1,3 +1,5 @@
+### CREATE GROUP
+
 POST http://127.0.0.1:8000/rpc
 Content-Type: application/json
 
@@ -15,5 +17,89 @@ Content-Type: application/json
       "username": "@cryptolxf",
       "role": 0,
       "owner": true
+  }
+}
+
+### REMOVE GROUOP
+
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "REMOVE_GROUP",
+  "params": {
+      "tribeGroupId": "1234...abce",
+      "tribeAddress": "0x1235..."
+  }
+}
+
+### ADD MEMBER
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+{
+"id": 1,
+"jsonrpc": "2.0",
+"method": "ADD_MEMBER",
+"params": {
+      "tribeGroupId": "1234...abce",
+      "tribeAddress": "0x1234...",
+      "address": "0xa1b2...",
+      "username": "@tigersnow",
+      "role": 0,
+      "expires": 6000000000,
+      "owner": false
+  }
+}
+
+### UPDATE MEMBER
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "UPDATE_MEMBER",
+  "params": {
+    "tribeGroupId": "1234...abce",
+    "tribeAddress": "0x1234...",
+    "address": "0xa1b2...",
+    "username": "@tigersnow",
+    "role": 1,
+    "expires": 1640995200,
+    "owner": false
+  }
+}
+
+### notify member message
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "NOTIFY_MEMBER",
+  "params": {
+    "tribeGroupId": "1234...abce",
+    "tribeAddress": "0x1234...",
+    "address": "0xa1b2...",
+    "username": "@cryptolxf",
+    "message": "Hi bob, please note ..."
+  }
+}
+
+### notify group
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "NOTIFY_GROUP",
+  "params": {
+    "tribeGroupId": "1234...abce",
+    "message": "Hi everyone, please note ..."
   }
 }
