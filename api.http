@@ -9,12 +9,13 @@ Content-Type: application/json
   "jsonrpc": "2.0",
   "method": "CREATE_GROUP",
   "params": {
-      "tribeGroupId": "1234...abce",
+      "tribeGroupId": "1234...abcf",
       "tribeAddress": "0x1235...",
       "name": "NFT Discuss",
       "description": "Discuss how NFT works...",
       "address": "0xa1b2...",
       "username": "@cryptolxf",
+      "expires": 1940827381,
       "role": 0,
       "owner": true
   }

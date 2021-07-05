@@ -174,7 +174,7 @@ async def process_create_group(cursor, params: dict) -> None:
     channel = await get_channel(cursor, tribe_group_id)
     if channel:
         raise Exception("tribeGroupId[{}] exists".format(tribe_group_id))
-    req = await client(CreateChannelRequest(name, description))
+    req = await client(CreateChannelRequest(name, description, megagroup=True))
     channel_id = req.__dict__["chats"][0].__dict__["id"]
     await add_channel(
         cursor, tribe_group_id, tribe_address, channel_id, name, description
