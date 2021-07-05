@@ -1,0 +1,19 @@
+POST http://127.0.0.1:8000/rpc
+Content-Type: application/json
+
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "CREATE_GROUP",
+  "params": {
+      "tribeGroupId": "1234...abce",
+      "tribeAddress": "0x1235...",
+      "name": "NFT Discuss",
+      "description": "Discuss how NFT works...",
+      "address": "0xa1b2...",
+      "username": "@cryptolxf",
+      "role": 0,
+      "owner": true
+  }
+}

@@ -130,7 +130,7 @@ Sample database schema for app:
 
 ```
 CREATE TABLE channels (
-    tribeGroupIdId VARCHAR(100) NOT NULL, -- tribeGroupId id from server
+    tribeGroupId VARCHAR(100) NOT NULL, -- tribeGroupId id from server
     tribeAddress VARCHAR(42) NOT NULL,    -- tribe address from server
     channelId VARCHAR(100) NOT NULL,      -- the real telegram channel id
     name VARCHAR(100) NOT NULL,           -- channel name
