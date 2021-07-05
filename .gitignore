@@ -136,3 +136,4 @@ dmypy.json
 /Telegram Server.session-journal
 /.idea
 /node_modules
+*.session

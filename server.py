@@ -1,10 +1,14 @@
+from datetime import timedelta
 import json
-import time
+import time, datetime
+
+from telethon import utils
 
 from telethon.sync import TelegramClient
 from telethon.tl.functions import channels
 from telethon.tl.functions.channels import (
     CreateChannelRequest,
+    EditBannedRequest,
     InviteToChannelRequest,
     DeleteChannelRequest,
 )
@@ -14,6 +18,8 @@ from quart import Quart, request
 
 import hypercorn
 from logging.config import dictConfig
+
+from telethon.tl.types import ChatBannedRights
 
 # initial logger
 dictConfig(
@@ -156,9 +162,9 @@ async def update_member(
 
 async def remove_member(cursor, tribe_group_id, username, address):
     remove_member_sql="""
-    delete from members where tribeGroupId=%s and username=%s annd address=%s
+    delete from members where tribeGroupId=%s and username=%s and address=%s
     """
-    await cursor.executee(remove_member_sql, tribe_group_id, username, address)
+    await cursor.execute(remove_member_sql, (tribe_group_id, username, address))
 
 async def process_create_group(cursor, params: dict) -> None:
     tribe_group_id = params.get("tribeGroupId", None)
@@ -193,7 +199,7 @@ async def process_create_group(cursor, params: dict) -> None:
     expires = params.get('expires', 0)
     if expires < int(time.time()):
         raise Exception('username [{}] expires [{}] before now'.format(username, expires))
-    await add_member(cursor, tribe_group_id, address, username, user.id, expires, 0, True, metadata)
+    await add_member(cursor, tribe_group_id, username, address, user.id, expires, 0, True, metadata)
     return dict(channelId=channel_id, userId=user.id)
 
 
@@ -230,7 +236,14 @@ async def process_add_member(cursor, params):
     member = await get_member(cursor, tribe_group_id, user.id)
     if member:
         raise Exception('member[{},{}] already joined in group[{}]'.format(username, address, tribe_group_id))
+    
     await client(InviteToChannelRequest(channel['channelId'], [user]))
+
+    rights = ChatBannedRights(
+        utils_date=datetime.now() + timedelta(weeks=10000),
+        send_polls=False
+    )
+    await client(EditBannedRequest(channel['channelId'], user, rights))
 
     role = params.get('role', 0)
     metadata = params.get('metadata', '')
@@ -242,7 +255,7 @@ async def process_add_member(cursor, params):
     if role > 0:
         await client.edit_admin(channel["channelId"], user, is_admin=True, invite_users=False, add_admins=False)
 
-    await add_member(cursor, tribe_group_id, address, username, user.id, expires, metadata=metadata)
+    await add_member(cursor, tribe_group_id, username, address, user.id, expires, metadata=metadata)
     return dict(tribeGroupId=tribe_group_id, userId=user.id)
 
 
@@ -316,7 +329,7 @@ async def process_remove_member(cursor, params):
         raise Exception('tribeGroupId[{}] not found'.format(tribe_group_id))
 
     await client.edit_permissions(channel['channelId'], user, view_messages=False)
-    await remove_member(tribe_group_id, username, address)
+    await remove_member(cursor, tribe_group_id, username, address)
 
 
 async def process_notify_member(cursor, params):
@@ -405,7 +418,7 @@ async def rpc():
         CREATE_GROUP=process_create_group,
         REMOVE_GROUP=process_remove_group,
         ADD_MEMBER=process_add_member,
-        # REMOVE_MEMBER=process_remove_member,
+        REMOVE_MEMBER=process_remove_member,
         UPDATE_MEMBER=process_update_member,
         NOTIFY_MEMBER=process_notify_member,
         NOTIFY_GROUP=process_notify_group
