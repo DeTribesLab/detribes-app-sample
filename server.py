@@ -1,8 +1,6 @@
-from datetime import timedelta
 import json
-import time, datetime
-
-from telethon import utils
+import time
+import os
 
 from telethon.sync import TelegramClient
 from telethon.tl.functions import channels
@@ -34,23 +32,18 @@ dictConfig(
 )
 
 
-# load config
-with open("config.json") as config_file:
-    config = json.load(config_file)
-    print(config)
-
 # Telethon client
-telegram_app_id = config["telegram"]["appId"]
-telegram_app_hash = config["telegram"]["appHash"]
-telegram_bind_phone = config["telegram"]["phone"]
+telegram_app_id = os.environ["TELEGRAM_APP_ID"]
+telegram_app_hash = os.environ["TELEGRAM_APP_HASH"]
+telegram_bind_phone = os.environ["TELEGRAM_BIND_PHONE"]
 client = TelegramClient("Telegram", telegram_app_id, telegram_app_hash)
 
 # db
-mysql_host = config["mysql"]["host"]
-mysql_port = config["mysql"]["port"]
-mysql_user = config["mysql"]["user"]
-mysql_password = config["mysql"]["password"]
-mysql_db = config["mysql"]["db"]
+mysql_host = os.environ['DB_HOST']
+mysql_port = os.environ.get('DB_PORT', 3306)
+mysql_user = os.environ['DB_USER']
+mysql_password = os.environ['DB_PASS']
+mysql_db = os.environ['DB_DB']
 
 pool = None
 
@@ -66,14 +59,12 @@ async def setup_db(loop):
         db=mysql_db,
         loop=loop,
     )
-    app.logger.info("connected db")
 
 
 async def close_db():
     global pool
     pool.close()
     await pool.wait_closed()
-    app.logger.info("closed db")
 
 
 # logic
@@ -127,6 +118,7 @@ async def add_channel(
         insert_channel_sql,
         (tribe_group_id, tribe_address, channel_id, name, description),
     )
+    return dict(tribeGroupId=tribe_group_id, channelId=channel_id)
 
 
 async def remove_channel(cursor, tribe_group_id):
@@ -298,6 +290,7 @@ async def process_add_member(cursor, params):
         change_info=False,
         invite_users=False,
         pin_messages=False,
+        until_date=0
     )
 
     await client(
@@ -308,7 +301,7 @@ async def process_add_member(cursor, params):
     is_admin = role > 0 or owner
     if is_admin:
         await client.edit_admin(
-            channel=channel_id,
+            entity=channel_id,
             user=user,
             is_admin=True,
             pin_messages=True,
@@ -373,7 +366,7 @@ async def process_update_member(cursor, params):
     if member["role"] == 0 and role > 0:
         # upgrade Admin
         await client.edit_admin(
-            channel=channel_id,
+            entity=channel_id,
             user=user_id,
             is_admin=True,
             pin_messages=True,
@@ -587,10 +580,11 @@ def json_error(id, code, message):
 def json_success(id, data):
     return {"id": id, "jsonrpc": "2.0", "result": data}
 
+app_port = os.environ.get('APP_PORT', 5000)
 
 async def main():
     config = hypercorn.Config()
-    config.bind = "127.0.0.1:5000"
+    config.bind = "127.0.0.1:{}".format(app_port)
     await hypercorn.asyncio.serve(app, config)
 
 

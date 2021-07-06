@@ -9,7 +9,7 @@ Content-Type: application/json
   "jsonrpc": "2.0",
   "method": "CREATE_GROUP",
   "params": {
-      "tribeGroupId": "1234...abci",
+      "tribeGroupId": "1234...abcp",
       "tribeAddress": "0x1235...",
       "name": "NFT Discuss 02",
       "description": "Discuss how NFT works...",
@@ -39,7 +39,7 @@ Content-Type: application/json
 }
 
 ### ADD MEMBER
-POST http://127.0.0.1:8000/rpc
+POST http://127.0.0.1:5000/rpc
 Content-Type: application/json
 
 {
@@ -47,7 +47,7 @@ Content-Type: application/json
 "jsonrpc": "2.0",
 "method": "ADD_MEMBER",
 "params": {
-      "tribeGroupId": "1234...abce",
+      "tribeGroupId": "1234...abcp",
       "tribeAddress": "0x1234...",
       "address": "0xa1b2...",
       "username": "@tigersnow",
@@ -58,7 +58,7 @@ Content-Type: application/json
 }
 
 ### UPDATE MEMBER
-POST http://127.0.0.1:8000/rpc
+POST http://127.0.0.1:5000/rpc
 Content-Type: application/json
 
 {
@@ -77,7 +77,7 @@ Content-Type: application/json
 }
 
 ### Remove MEMBER
-POST http://127.0.0.1:8000/rpc
+POST http://127.0.0.1:5000/rpc
 Content-Type: application/json
 
 {
@@ -85,10 +85,10 @@ Content-Type: application/json
   "jsonrpc": "2.0",
   "method": "REMOVE_MEMBER",
   "params": {
-    "tribeGroupId": "1234...abch",
+    "tribeGroupId": "1234...abce",
     "tribeAddress": "0x1235...",
     "address": "0xa1b2...",
-    "username": "@cryptolxf",
+    "username": "@tigersnow",
     "role": 1,
     "expires": 1640995200,
     "owner": false
