@@ -1,6 +1,6 @@
 ### CREATE GROUP
 
-POST http://127.0.0.1:8000/rpc
+POST http://127.0.0.1:5000/rpc
 Content-Type: application/json
 
 
@@ -9,7 +9,7 @@ Content-Type: application/json
   "jsonrpc": "2.0",
   "method": "CREATE_GROUP",
   "params": {
-      "tribeGroupId": "1234...abch",
+      "tribeGroupId": "1234...abci",
       "tribeAddress": "0x1235...",
       "name": "NFT Discuss 02",
       "description": "Discuss how NFT works...",
@@ -125,4 +125,16 @@ Content-Type: application/json
     "tribeGroupId": "1234...abce",
     "message": "Hi everyone, please note ..."
   }
+}
+
+
+### check membership
+POST http://127.0.0.1:5000/rpc
+Content-Type: application/json
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "CHECK_MEMBERSHIP",
+  "params": {}
 }

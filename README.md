@@ -154,3 +154,14 @@ CREATE TABLE members (
     PRIMARY KEY(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+## deployment
+
+- python version = 3.9.0
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python server.py
+```

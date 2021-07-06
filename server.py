@@ -87,7 +87,11 @@ def to_dict(columns, row):
 
 async def get_channel(cursor, tribe_group_id):
     get_channel_by_id_sql = """
-    select tribeGroupId, tribeAddress, channelId, name, description from channels where tribeGroupId=%s
+    select 
+        tribeGroupId, tribeAddress, channelId, name, description 
+    from 
+        channels 
+    where tribeGroupId=%s
     """
     await cursor.execute(get_channel_by_id_sql, tribe_group_id)
     columns = [column[0] for column in cursor.description]
@@ -96,7 +100,12 @@ async def get_channel(cursor, tribe_group_id):
 
 async def get_member(cursor, tribe_group_id, username, address):
     get_member_by_username_address_sql = """
-    select id, tribeGroupId, address, username, userId, role, expires, metadata, owner from members where tribeGroupId=%s and username=%s and address=%s
+    select 
+        id, tribeGroupId, address, username, userId, role, expires, metadata, owner 
+    from 
+        members 
+    where 
+        tribeGroupId=%s and username=%s and address=%s
     """
     await cursor.execute(
         get_member_by_username_address_sql, (tribe_group_id, username, address)
@@ -109,7 +118,10 @@ async def add_channel(
     cursor, tribe_group_id, tribe_address, channel_id, name, description
 ):
     insert_channel_sql = """
-    insert into channels (tribeGroupId, tribeAddress, channelId, name, description) values (%s, %s, %s, %s, %s)
+    insert into channels 
+        (tribeGroupId, tribeAddress, channelId, name, description) 
+    values 
+        (%s, %s, %s, %s, %s)
     """
     await cursor.execute(
         insert_channel_sql,
@@ -129,10 +141,31 @@ async def remove_channel(cursor, tribe_group_id):
 
 
 async def add_member(
-    cursor, tribe_group_id, username, address, user_id, expires, role=0, owner=False, metadata=""
+    cursor,
+    tribe_group_id,
+    username,
+    address,
+    user_id,
+    expires,
+    role=0,
+    owner=False,
+    metadata="",
 ):
+    # check member existing
+
+    if owner or role > 0:
+        # add as admin
+        pass
+    else:
+        # add general account
+        pass
+
+    # update database
     insert_member_sql = """
-    insert into members (tribeGroupId, username, address, userId, role, expires, owner, metadata) values (%s, %s, %s, %s, %s, %s, %s, %s)
+    insert into members 
+        (tribeGroupId, username, address, userId, role, expires, owner, metadata) 
+    values 
+        (%s, %s, %s, %s, %s, %s, %s, %s)
     """
     await cursor.execute(
         insert_member_sql,
@@ -153,18 +186,25 @@ async def update_member(
     cursor, tribe_group_id, username, address, expires, role, metadata
 ):
     update_member_sql = """
-    update members set username=%s, address=%s, expires=%s, owner=%s,metadata=%s where tribeGroupId=%s and username=%s and address=%s
+    update members set 
+        username=%s, address=%s, expires=%s, owner=%s,metadata=%s 
+    where 
+        tribeGroupId=%s and username=%s and address=%s
     """
     await cursor.execute(
         update_member_sql,
         (username, address, expires, role, metadata, tribe_group_id, username, address),
     )
 
+
 async def remove_member(cursor, tribe_group_id, username, address):
-    remove_member_sql="""
-    delete from members where tribeGroupId=%s and username=%s and address=%s
+    remove_member_sql = """
+    delete from members 
+    where 
+        tribeGroupId=%s and username=%s and address=%s
     """
     await cursor.execute(remove_member_sql, (tribe_group_id, username, address))
+
 
 async def process_create_group(cursor, params: dict) -> None:
     tribe_group_id = params.get("tribeGroupId", None)
@@ -182,191 +222,290 @@ async def process_create_group(cursor, params: dict) -> None:
         raise Exception("tribeGroupId[{}] exists".format(tribe_group_id))
     req = await client(CreateChannelRequest(name, description, megagroup=True))
     channel_id = req.__dict__["chats"][0].__dict__["id"]
-    await add_channel(
+
+    channel0 = await add_channel(
         cursor, tribe_group_id, tribe_address, channel_id, name, description
     )
 
-    username = params.get("username", None)
-    if not username:
-        raise Exception("username is None")
-    address = params.get("address", None)
-    if not address:
-        raise Exception("address is None")
+    app.logger.info("create group[%s](%s)", tribe_group_id, channel_id)
 
-    user = await client.get_entity(username)
-    await client(InviteToChannelRequest(channel_id, [user]))
-    metadata = params.get('metadata', "")
-    expires = params.get('expires', 0)
-    if expires < int(time.time()):
-        raise Exception('username [{}] expires [{}] before now'.format(username, expires))
-    await add_member(cursor, tribe_group_id, username, address, user.id, expires, 0, True, metadata)
-    return dict(channelId=channel_id, userId=user.id)
+    params["owner"] = True
+    member = await process_add_member(cursor, params)
+    return channel0.update(member)
 
 
 async def process_remove_group(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
     channel = await get_channel(cursor, tribe_group_id)
+    channel_id = channel["channelId"]
     if not channel:
         raise Exception("tribeGroupId not found")
-    await client(DeleteChannelRequest(channel['channelId']))
+    await client(DeleteChannelRequest(channel["channelId"]))
     await remove_channel(cursor, tribe_group_id)
-    app.logger.info('remove group [{}], telegram channel [{}]'.format(tribe_group_id, channel['channelId']))
-    return dict(tribeGroupId=tribe_group_id)
+    app.logger.info("remove group[%s](%s)", tribe_group_id, channel_id)
+    return dict(tribeGroupId=tribe_group_id, channeId=channel_id)
 
 
 async def process_add_member(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
-    username = params.get('username', None)
-    address = params.get('address', None)
+    username = params.get("username", None)
+    address = params.get("address", None)
+
     if not tribe_group_id:
-        raise Exception('tribeGroupId not exists')
-    
+        raise Exception("tribeGroupId not exists")
+
     if not username:
-        raise Exception('username not exists')
+        raise Exception("username not exists")
 
     if not address:
-        raise Exception('address not exists')
-    
+        raise Exception("address not exists")
+
     channel = await get_channel(cursor, tribe_group_id)
+    channel_id = channel["channelId"]
     if not channel:
-        raise Exception('tribeGroupId[{}] not created'.format(tribe_group_id))
-    
-    user = await client.get_entity(username)
-    app.logger.info('username {} userId {}'.format(username, user.id))
-    member = await get_member(cursor, tribe_group_id, user.id)
+        raise Exception("tribeGroupId[{}] not created".format(tribe_group_id))
+
+    member = await get_member(cursor, tribe_group_id, username, address)
     if member:
-        raise Exception('member[{},{}] already joined in group[{}]'.format(username, address, tribe_group_id))
-    
-    await client(InviteToChannelRequest(channel['channelId'], [user]))
+        raise Exception(
+            "member[{},{}] already joined group[{}]".format(
+                username, address, tribe_group_id
+            )
+        )
 
-    rights = ChatBannedRights(
-        utils_date=datetime.now() + timedelta(weeks=10000),
-        send_polls=False
-    )
-    await client(EditBannedRequest(channel['channelId'], user, rights))
-
-    role = params.get('role', 0)
-    metadata = params.get('metadata', '')
-    expires = params.get('expires', 0)
+    role = params.get("role", 0)
+    metadata = params.get("metadata", "")
+    expires = params.get("expires", 0)
+    owner = params.get("owner", False)
 
     if expires < int(time.time()):
-        raise Exception('username [{}] expires [{}] before now'.format(username, expires))
+        raise Exception(
+            "username [{}] expires [{}] before now".format(username, expires)
+        )
 
-    if role > 0:
-        await client.edit_admin(channel["channelId"], user, is_admin=True, invite_users=False, add_admins=False)
+    user = await client.get_entity(entity=username)
+    await client(InviteToChannelRequest(channel=channel_id, users=[user.id]))
 
-    await add_member(cursor, tribe_group_id, username, address, user.id, expires, metadata=metadata)
-    return dict(tribeGroupId=tribe_group_id, userId=user.id)
+    # set general account rights
+    general_rights = ChatBannedRights(
+        send_messages=True,
+        view_messages=True,
+        send_media=True,
+        send_stickers=True,
+        send_gifs=True,
+        send_games=True,
+        send_polls=False,
+        change_info=False,
+        invite_users=False,
+        pin_messages=False,
+    )
+
+    await client(
+        EditBannedRequest(
+            channel=channel_id, participant=user, banned_rights=general_rights
+        )
+    )
+    is_admin = role > 0 or owner
+    if is_admin:
+        await client.edit_admin(
+            channel=channel_id,
+            user=user,
+            is_admin=True,
+            pin_messages=True,
+            change_info=True,
+            edit_messages=True,
+            delete_messages=True,
+            ban_users=True,
+            invite_users=False,
+            add_admins=False,
+        )
+
+    await add_member(
+        cursor, tribe_group_id, username, address, user.id, expires, metadata=metadata
+    )
+    app.logger.info(
+        "add member[%s,%s,%s](%s) to group[%s](%s)",
+        username,
+        address,
+        is_admin,
+        user.id,
+        tribe_group_id,
+        channel_id,
+    )
+    return dict(
+        tribeGroupId=tribe_group_id,
+        userId=user.id,
+    )
 
 
 async def process_update_member(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
-    username = params.get('username', None)
-    address = params.get('address', None)
-    
+    username = params.get("username", None)
+    address = params.get("address", None)
+    role = params.get("role", 0)
+    metadata = params.get("metadata", "")
+    expires = params.get("expires", 0)
+
     if not tribe_group_id:
-        raise Exception('tribeGroupId not exists')
-    
+        raise Exception("tribeGroupId not exists")
+
     if not username:
-        raise Exception('username not exists')
-    
+        raise Exception("username not exists")
+
     if not address:
-        raise Exception('address not exists')
+        raise Exception("address not exists")
 
-    user = await client.get_entity(username)
-
-    app.logger.info('username {} userId {}'.format(username, user.id))
+    if expires < int(time.time()):
+        raise Exception("expires [{}] before now".format(username, expires))
 
     channel = await get_channel(cursor, tribe_group_id)
-
     if not channel:
-        raise Exception('tribeGroupId[{}] not found'.format(tribe_group_id))
+        raise Exception("group[{}] not found".format(tribe_group_id))
+    channel_id = channel["channelId"]
 
     member = await get_member(cursor, tribe_group_id, username, address)
-    
     if not member:
-        raise Exception('member [{}, {}, {}] not found'.format(tribe_group_id, username, address))
+        raise Exception(
+            "member[{},{}] not in group[{}]".format(username, address, tribe_group_id)
+        )
+    user_id = member["userId"]
 
-    role = params.get('role', 0)
-    metadata = params.get('metadata', '')
-    expires = params.get('expires', 0)
-    
-    if expires < int(time.time()):
-        raise Exception('username [{}] expires [{}] before now'.format(username, expires))
-
-    if member['role'] == 0 and role > 0:
+    if member["role"] == 0 and role > 0:
         # upgrade Admin
-        await client.edit_admin(channel['channelId'],  user, is_admin=True, invite_users=False, add_admins=False)
-        app.logger.info('upgrade member[{},{}] in group [{}] to admin'.format(username, address, tribe_group_id))
+        await client.edit_admin(
+            channel=channel_id,
+            user=user_id,
+            is_admin=True,
+            pin_messages=True,
+            change_info=True,
+            edit_messages=True,
+            delete_messages=True,
+            ban_users=True,
+            invite_users=False,
+            add_admins=False,
+        )
 
-    if member['role'] > 0 and role == 0:
+    if member["role"] > 0 and role == 0:
         # downgrade general user
-        await client.edit_admin(channel['channelId'], user, is_admin=False)
-        app.logger.info('downgrade member[{},{}] in group [{}] to general account'.format(username, address, tribe_group_id))
+        await client.edit_admin(channel_id, user_id, is_admin=False)
 
-    await update_member(cursor, tribe_group_id, username, address, expires, role, metadata)
+    await update_member(
+        cursor, tribe_group_id, username, address, expires, role, metadata
+    )
+    app.logger.info(
+        "update member[%s,%s](%s) in group[%s](%s)",
+        username,
+        address,
+        user_id,
+        tribe_group_id,
+        channel_id,
+    )
+    return dict(
+        tribeGroupId=tribe_group_id, username=username, address=address, userId=user_id
+    )
 
 
 async def process_remove_member(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
-    username = params.get('username', None)
-    address = params.get('address', None)
+    username = params.get("username", None)
+    address = params.get("address", None)
 
     if not tribe_group_id:
-        raise Exception('tribeGroupId not exists')
-    
-    if not username:
-        raise Exception('username not exists')
-    
-    if not address:
-        raise Exception('address not exists')
+        raise Exception("tribeGroupId not exists")
 
-    user = await client.get_entity(username)
+    if not username:
+        raise Exception("username not exists")
+
+    if not address:
+        raise Exception("address not exists")
 
     channel = await get_channel(cursor, tribe_group_id)
-
     if not channel:
-        raise Exception('tribeGroupId[{}] not found'.format(tribe_group_id))
-
-    await client.edit_permissions(channel['channelId'], user, view_messages=False)
+        raise Exception("group[{}] not found".format(tribe_group_id))
+    member = await get_member(
+        cursor, tribe_group_id=tribe_group_id, username=username, address=address
+    )
+    if not member:
+        raise Exception(
+            "member[{},{}] not in group[{}]".format(username, address, tribe_group_id)
+        )
+    await client.edit_permissions(
+        channel["channelId"], member["userId"], view_messages=False
+    )
     await remove_member(cursor, tribe_group_id, username, address)
+    app.logger.info(
+        "remove member[%s,%s](%s) in group[%s](%s)",
+        username,
+        address,
+        member["userId"],
+        tribe_group_id,
+        channel["channelId"],
+    )
+    return dict(
+        tribeGroupId=tribe_group_id,
+        username=username,
+        address=address,
+        userId=member["userId"],
+    )
 
 
 async def process_notify_member(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
-    username = params.get('username', None)
-    address = params.get('address', None)
+    username = params.get("username", None)
+    address = params.get("address", None)
 
     if not tribe_group_id:
-        raise Exception('tribeGroupId not exists')
-    
+        raise Exception("tribeGroupId not exists")
+
     if not username:
-        raise Exception('username not exists')
-    
+        raise Exception("username not exists")
+
     if not address:
-        raise Exception('address not exists')
+        raise Exception("address not exists")
 
     channel = await get_channel(cursor, tribe_group_id)
     if not channel:
-        raise Exception('tribeGroupId[{}] not found'.format(tribe_group_id))
-    
+        raise Exception("group[{}] not found".format(tribe_group_id))
+
     user = await client.get_entity(username)
 
-    await client.send_message(user, params.get('message', ""))
+    await client.send_message(user, params.get("message", ""))
 
 
 async def process_notify_group(cursor, params):
     tribe_group_id = params.get("tribeGroupId", None)
     if not tribe_group_id:
-        raise Exception('tribeGroupId not exists')
+        raise Exception("tribeGroupId not exists")
 
     channel = await get_channel(cursor, tribe_group_id)
     if not channel:
-        raise Exception('tribeGroupId[{}] not found'.format(tribe_group_id))
-    
-    # user = await client.get_entity(username)
+        raise Exception("tribeGroupId[{}] not found".format(tribe_group_id))
+    await client.send_message(channel["channelId"], params.get("message", ""))
 
-    await client.send_message(channel['channelId'], params.get('message', ""))
+
+async def process_check_membership(cursor, params):
+    sql = """
+        select 
+            tribeGroupId, username, address 
+        from members 
+        where expires <= %s
+    """
+
+    # kick members that expired 24 hours
+    await cursor.execute(sql, int(time.time()) - 24 * 3600)
+    columns = [column[0] for column in cursor.description]
+    kick_members = await cursor.fetchall()
+    for member in kick_members:
+        await process_remove_member(cursor, to_dict(columns=columns, row=member))
+
+    # alert members that expire in 3 days
+    await cursor.execute(sql, (int(time.time()) + 72 * 3600))
+    alert_members = await cursor.fetchall()
+    alert_message = "Your membership of group[%s] will expires soon, please renew"
+    for member in alert_members:
+        data = to_dict(columns=columns, row=member)
+        data["message"] = alert_message.format(member["tribeGroupId"])
+        await process_notify_group(cursor, data)
 
 
 # Quart app
@@ -385,10 +524,9 @@ async def startup():
 @app.after_serving
 async def cleanup():
     await client.disconnect()
-    app.logger.info('telegram client disconnected')
+    app.logger.info("telegram client disconnected")
     await close_db()
-    app.logger.info('database disconnected')
-    app.logger.info("cleanup finished")
+    app.logger.info("database disconnected")
 
 
 @app.route("/rpc", methods=["POST"])
@@ -421,7 +559,8 @@ async def rpc():
         REMOVE_MEMBER=process_remove_member,
         UPDATE_MEMBER=process_update_member,
         NOTIFY_MEMBER=process_notify_member,
-        NOTIFY_GROUP=process_notify_group
+        NOTIFY_GROUP=process_notify_group,
+        CHECK_MEMBERSHIP=process_check_membership,
     )
 
     if method not in handlers:
@@ -450,7 +589,9 @@ def json_success(id, data):
 
 
 async def main():
-    await hypercorn.asyncio.serve(app, hypercorn.Config())
+    config = hypercorn.Config()
+    config.bind = "127.0.0.1:5000"
+    await hypercorn.asyncio.serve(app, config)
 
 
 if __name__ == "__main__":
