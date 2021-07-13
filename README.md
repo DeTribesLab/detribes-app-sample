@@ -58,6 +58,25 @@ JSON-RPC definitions:
 }
 ```
 
+# Get Member Invite Link:
+
+```
+{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "INVITE_MEMBER",
+    "params": {
+        "tribeGroupId": "1234...abcd",
+        "tribeAddress": "0x1234...",
+        "address": "0xa1b2...",
+        "username": "bob",
+        "role": 0,
+        "expires: 6000000000,
+        "owner": false
+    }
+}
+```
+
 # Update Member:
 
 ```
